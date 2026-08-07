@@ -121,8 +121,22 @@ The service exists so an agent can complete a verification step **for an account
 
 [`examples/mcp-tool.md`](https://github.com/nirholas/x402-otp-relay/blob/main/examples/mcp-tool.md) exposes the cycle as Claude tools — including a `wait_for_code` tool that does the free polling internally, so the model makes one call instead of thirty.
 
-## 9. Getting listed
+## 9. Protocol version and schemas
 
+Every `accepts` entry carries `outputSchema.input` (how to build the request) and
+`outputSchema.output` (the JSON Schema of the 200 body), generated from
+`openapi.json`. A 402 is therefore enough on its own: pay, then call the route
+exactly as `input` describes and parse what `output` promises — no second fetch
+of the spec required.
+
+The challenges are **x402 v1** (`"x402Version": 1`), the version every deployed
+`x402-fetch` / `x402` client speaks today, including the examples in this repo.
+x402 v2 — CAIP-2 network ids, and `extensions.bazaar.schema` in place of
+`accepts[].outputSchema` — is a planned future upgrade for agentcash
+compatibility. Until then, a v2-only client should treat this service as v1;
+nothing else about the flow changes.
+
+## 10. Getting listed
 - **[x402scan.com](https://x402scan.com)** — point it at your `/.well-known/x402`.
 - **x402 Bazaar** — the protocol's own resource directory; same manifest format.
 - **[agentic.market](https://agentic.market)** — agent-facing marketplace listing.

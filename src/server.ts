@@ -5,6 +5,7 @@ import { activeRails, mountSolanaCheckout, paymentReceipt, paywall, usingSuiteDe
 import { MailboxStore } from "./mailbox.js";
 import { SmtpRelay } from "./smtp.js";
 import { signed, verify } from "./sign.js";
+import { ROUTE_SCHEMAS } from "./schemas.js";
 
 /**
  * x402-otp-relay — the "we've emailed you a code" step, solved for agents.
@@ -52,7 +53,11 @@ const PRICES: Record<string, string> = {
   "GET /codes/:token": "$0.002",
 };
 
-app.use(paywall(PRICES, { service: "x402-otp-relay" }));
+// `schemas` publishes each paid route's request/response contract inside the 402
+// challenge (`accepts[].outputSchema`), so an agent that hits the paywall knows
+// how to call the route and what it will get back without reading the OpenAPI
+// document first. Generated from openapi.json — see src/schemas.ts.
+app.use(paywall(PRICES, { service: "x402-otp-relay", schemas: ROUTE_SCHEMAS }));
 
 /**
  * Rent a mailbox. The artifact is the address itself — the agent needs it
