@@ -1,0 +1,910 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "x402-otp-relay",
+    "version": "0.1.0",
+    "description": "The 'code sent to your email' step, solved for agents. Rent a disposable relay mailbox, hand its address to whatever needs to email you a code, then poll for the extracted OTP. Real inbound SMTP; codes are ranked with confidence scores and surrounding context. Pay in USDC on Base or Solana; the client picks the rail.",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "contact": {
+      "name": "nirholas",
+      "email": "nichxbt@gmail.com",
+      "url": "https://github.com/nirholas/x402-otp-relay"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4035",
+      "description": "Local dev server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "paid",
+      "description": "Routes behind the x402 dual-rail paywall"
+    },
+    {
+      "name": "free",
+      "description": "Free routes \u2014 including the poll you should use while waiting"
+    }
+  ],
+  "paths": {
+    "/mailbox": {
+      "post": {
+        "tags": [
+          "paid"
+        ],
+        "operationId": "createMailbox",
+        "summary": "Rent a disposable relay mailbox",
+        "description": "Price: $0.01 USDC. Returns the address to paste into a signup form, the bearer token that reads it, and the expiry. relayAddress is public; mailboxToken is the credential \u2014 the address is a hash of the token, not the token.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMailboxRequest"
+              },
+              "examples": {
+                "labelled": {
+                  "value": {
+                    "label": "signup-run-8812",
+                    "ttlSeconds": 600
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The mailbox",
+            "headers": {
+              "X-PAYMENT-RESPONSE": {
+                "$ref": "#/components/headers/XPaymentResponse"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "mailbox"
+                  ],
+                  "properties": {
+                    "mailbox": {
+                      "$ref": "#/components/schemas/SignedMailbox"
+                    },
+                    "smtp": {
+                      "type": "object",
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "paidWith": {
+                      "$ref": "#/components/schemas/PaymentReceipt"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "502": {
+            "$ref": "#/components/responses/FacilitatorError"
+          }
+        }
+      }
+    },
+    "/codes/{token}": {
+      "get": {
+        "tags": [
+          "paid"
+        ],
+        "operationId": "getCodes",
+        "summary": "Poll the mailbox for extracted OTP codes",
+        "description": "Price: $0.002 USDC. A pay-per-poll snapshot \u2014 an empty codes array is a valid paid answer meaning the mailbox is live and mail has not arrived yet. Poll the FREE /messages/{token} while waiting, then pay here once. A 404 means the token is wrong or the mailbox expired.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot of codes found so far",
+            "headers": {
+              "X-PAYMENT-RESPONSE": {
+                "$ref": "#/components/headers/XPaymentResponse"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "result"
+                  ],
+                  "properties": {
+                    "result": {
+                      "$ref": "#/components/schemas/SignedCodes"
+                    },
+                    "paidWith": {
+                      "$ref": "#/components/schemas/PaymentReceipt"
+                    }
+                  }
+                },
+                "examples": {
+                  "found": {
+                    "value": {
+                      "result": {
+                        "payload": {
+                          "messageCount": 1,
+                          "codes": [
+                            {
+                              "code": "481920",
+                              "kind": "numeric",
+                              "confidence": 0.95,
+                              "method": "labelled",
+                              "source": "subject",
+                              "context": "481920 is your verification code"
+                            }
+                          ],
+                          "best": {
+                            "code": "481920",
+                            "confidence": 0.95
+                          },
+                          "links": [],
+                          "waitedMs": 4210
+                        },
+                        "signature": "\u2026",
+                        "algorithm": "HMAC-SHA256"
+                      }
+                    }
+                  },
+                  "still-waiting": {
+                    "value": {
+                      "result": {
+                        "payload": {
+                          "messageCount": 0,
+                          "codes": [],
+                          "best": null,
+                          "links": [],
+                          "waitedMs": 1200
+                        },
+                        "signature": "\u2026",
+                        "algorithm": "HMAC-SHA256"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "404": {
+            "description": "Unknown or expired mailboxToken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "MAILBOX_NOT_FOUND",
+                  "hint": "Mailboxes expire; rent a new one with POST /mailbox."
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "502": {
+            "$ref": "#/components/responses/FacilitatorError"
+          }
+        }
+      }
+    },
+    "/messages/{token}": {
+      "get": {
+        "tags": [
+          "free"
+        ],
+        "operationId": "listMessages",
+        "summary": "Message metadata without the codes \u2014 poll this for free while waiting",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messageCount": {
+                      "type": "integer"
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "receivedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "from": {
+                            "type": "string"
+                          },
+                          "subject": {
+                            "type": "string"
+                          },
+                          "codesFound": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "hint": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown or expired mailboxToken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mailbox/{token}": {
+      "delete": {
+        "tags": [
+          "free"
+        ],
+        "operationId": "releaseMailbox",
+        "summary": "Release a mailbox early",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Released",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "released": {
+                      "type": "boolean"
+                    },
+                    "mailboxToken": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Already released or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify": {
+      "post": {
+        "tags": [
+          "free"
+        ],
+        "operationId": "verifyRecord",
+        "summary": "Verify the HMAC signature on a mailbox or codes record",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "payload",
+                  "signature"
+                ],
+                "properties": {
+                  "payload": {},
+                  "signature": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "valid"
+                  ],
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "free"
+        ],
+        "operationId": "health",
+        "summary": "Liveness, payment rails, SMTP status and live mailbox count",
+        "responses": {
+          "200": {
+            "description": "Service is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "service": {
+                      "type": "string"
+                    },
+                    "rails": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Rail"
+                      }
+                    },
+                    "smtp": {
+                      "type": "object",
+                      "properties": {
+                        "listening": {
+                          "type": "boolean"
+                        },
+                        "port": {
+                          "type": "number"
+                        },
+                        "domain": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "mailboxes": {
+                      "type": "integer"
+                    },
+                    "messages": {
+                      "type": "integer"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "ttlMs": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/x402": {
+      "get": {
+        "tags": [
+          "free"
+        ],
+        "operationId": "manifest",
+        "summary": "x402 discovery manifest",
+        "responses": {
+          "200": {
+            "description": "Manifest describing paid resources, prices and both payment rails",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "headers": {
+      "XPaymentResponse": {
+        "description": "Base64 JSON settlement receipt: { success, rail, network, transaction, payer, amount, asset, resource }",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "PaymentRequired": {
+        "description": "Payment required. `accepts` lists both rails \u2014 pick one, sign it, retry with `X-PAYMENT`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PaymentRequiredBody"
+            },
+            "example": {
+              "x402Version": 1,
+              "error": "X-PAYMENT header is required",
+              "accepts": [
+                {
+                  "scheme": "exact",
+                  "network": "base-sepolia",
+                  "maxAmountRequired": "10000",
+                  "resource": "http://localhost:4035/mailbox",
+                  "description": "x402-otp-relay: POST /mailbox",
+                  "mimeType": "application/json",
+                  "payTo": "0x40252CFDF8B20Ed757D61ff157719F33Ec332402",
+                  "maxTimeoutSeconds": 60,
+                  "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2"
+                  }
+                },
+                {
+                  "scheme": "exact",
+                  "network": "solana",
+                  "maxAmountRequired": "10000",
+                  "resource": "http://localhost:4035/mailbox",
+                  "description": "x402-otp-relay: POST /mailbox",
+                  "mimeType": "application/json",
+                  "payTo": "WwwuGbqHrwF5RG89KhUbmRWEvjnRH9k5kVM5p7T3WwW",
+                  "maxTimeoutSeconds": 60,
+                  "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                  "extra": {
+                    "name": "USD Coin",
+                    "decimals": 6,
+                    "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+                    "amount": "10000"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Malformed request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Server misconfiguration (e.g. no valid payTo on either rail)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "FacilitatorError": {
+        "description": "The payment facilitator could not be reached. Nothing was charged.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "PaymentRequirements": {
+        "type": "object",
+        "required": [
+          "scheme",
+          "network",
+          "maxAmountRequired",
+          "resource",
+          "payTo",
+          "asset"
+        ],
+        "properties": {
+          "scheme": {
+            "type": "string",
+            "const": "exact"
+          },
+          "network": {
+            "type": "string",
+            "examples": [
+              "base-sepolia",
+              "base",
+              "solana",
+              "solana-devnet"
+            ]
+          },
+          "maxAmountRequired": {
+            "type": "string",
+            "description": "USDC atomic units (6 decimals)"
+          },
+          "resource": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "payTo": {
+            "type": "string"
+          },
+          "maxTimeoutSeconds": {
+            "type": "integer"
+          },
+          "asset": {
+            "type": "string"
+          },
+          "extra": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "PaymentRequiredBody": {
+        "type": "object",
+        "required": [
+          "x402Version",
+          "accepts"
+        ],
+        "properties": {
+          "x402Version": {
+            "type": "integer",
+            "const": 1
+          },
+          "error": {
+            "type": "string"
+          },
+          "accepts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentRequirements"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "PaymentReceipt": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "rail": {
+            "type": "string",
+            "enum": [
+              "evm",
+              "solana"
+            ]
+          },
+          "network": {
+            "type": "string"
+          },
+          "transaction": {
+            "type": "string"
+          },
+          "payer": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "asset": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          }
+        }
+      },
+      "Rail": {
+        "type": "object",
+        "properties": {
+          "rail": {
+            "type": "string",
+            "enum": [
+              "evm",
+              "solana"
+            ]
+          },
+          "network": {
+            "type": "string"
+          },
+          "payTo": {
+            "type": "string"
+          },
+          "facilitator": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "CreateMailboxRequest": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Your own bookkeeping label, echoed back"
+          },
+          "ttlSeconds": {
+            "type": "number",
+            "minimum": 60,
+            "description": "Requested lifetime. Capped by the server's own TTL."
+          }
+        }
+      },
+      "Mailbox": {
+        "type": "object",
+        "properties": {
+          "relayAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "PUBLIC. Give this to the sender."
+          },
+          "mailboxToken": {
+            "type": "string",
+            "description": "SECRET. This reads the mailbox."
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "label": {
+            "type": "string"
+          },
+          "pollUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "SignedMailbox": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "#/components/schemas/Mailbox"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "algorithm": {
+            "type": "string",
+            "const": "HMAC-SHA256"
+          }
+        }
+      },
+      "ExtractedCode": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The code, or the URL when kind is link"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "numeric",
+              "alphanumeric",
+              "link"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "labelled",
+              "subject",
+              "isolated-line",
+              "magic-link"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "subject",
+              "text",
+              "html"
+            ]
+          },
+          "context": {
+            "type": "string",
+            "description": "~80 chars of surrounding text"
+          }
+        }
+      },
+      "CodesResult": {
+        "type": "object",
+        "properties": {
+          "mailboxToken": {
+            "type": "string"
+          },
+          "relayAddress": {
+            "type": "string"
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "messageCount": {
+            "type": "integer"
+          },
+          "codes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtractedCode"
+            }
+          },
+          "best": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractedCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Top-ranked non-link candidate"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtractedCode"
+            }
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "receivedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "codes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "waitedMs": {
+            "type": "number",
+            "description": "Milliseconds since the mailbox was created"
+          },
+          "polledAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SignedCodes": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "#/components/schemas/CodesResult"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "algorithm": {
+            "type": "string",
+            "const": "HMAC-SHA256"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

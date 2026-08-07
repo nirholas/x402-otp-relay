@@ -1,0 +1,128 @@
+{
+  "x402Version": 1,
+  "name": "x402-otp-relay",
+  "description": "The 'code sent to your email' step, solved for agents — rent a disposable relay mailbox, hand its address to whatever needs to email you a code, then poll for the extracted OTP. Real inbound SMTP, ranked extraction with confidence scores. Pay in USDC on Base or Solana; your client picks the rail.",
+  "contact": "nichxbt@gmail.com",
+  "repository": "https://github.com/nirholas/x402-otp-relay",
+  "documentation": "https://nirholas.github.io/x402-otp-relay/",
+  "skill": "https://raw.githubusercontent.com/nirholas/x402-otp-relay/main/skill.md",
+  "rails": [
+    {
+      "rail": "evm",
+      "network": "base-sepolia",
+      "asset": "USDC",
+      "assetAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x40252CFDF8B20Ed757D61ff157719F33Ec332402",
+      "facilitator": "https://x402.org/facilitator"
+    },
+    {
+      "rail": "solana",
+      "network": "solana",
+      "asset": "USDC",
+      "assetAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "payTo": "WwwuGbqHrwF5RG89KhUbmRWEvjnRH9k5kVM5p7T3WwW",
+      "facilitator": "https://facilitator.payai.network"
+    }
+  ],
+  "resources": [
+    {
+      "resource": "POST /mailbox",
+      "description": "Rent a disposable relay mailbox. Returns the address to paste into a signup form, the bearer token that reads it, and the expiry — all in the 200 body.",
+      "price": "$0.01",
+      "networks": ["base-sepolia", "solana"],
+      "asset": "USDC",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "description": "Your own bookkeeping label, echoed back." },
+          "ttlSeconds": { "type": "number", "description": "Requested lifetime. Minimum 60s, capped by the server's own TTL." }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["mailbox"],
+        "properties": {
+          "mailbox": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "relayAddress": { "type": "string", "format": "email", "description": "Public. Give this to the sender." },
+                  "mailboxToken": { "type": "string", "description": "Secret. This reads the mailbox." },
+                  "expiry": { "type": "string", "format": "date-time" },
+                  "createdAt": { "type": "string", "format": "date-time" },
+                  "label": { "type": "string" },
+                  "pollUrl": { "type": "string" }
+                }
+              },
+              "signature": { "type": "string" },
+              "algorithm": { "type": "string", "enum": ["HMAC-SHA256"] }
+            }
+          },
+          "smtp": { "type": "object", "properties": { "host": { "type": "string" }, "port": { "type": "number" } } },
+          "paidWith": { "type": "object" }
+        }
+      }
+    },
+    {
+      "resource": "GET /codes/:token",
+      "description": "Poll the mailbox for OTP codes extracted from mail received so far. A pay-per-poll snapshot: an empty list is a valid answer meaning the mailbox is live and the mail has not landed yet. Codes are ranked by confidence with the matching method and surrounding context.",
+      "price": "$0.002",
+      "networks": ["base-sepolia", "solana"],
+      "asset": "USDC",
+      "outputSchema": {
+        "type": "object",
+        "required": ["result"],
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "mailboxToken": { "type": "string" },
+                  "relayAddress": { "type": "string" },
+                  "expiry": { "type": "string", "format": "date-time" },
+                  "messageCount": { "type": "number" },
+                  "codes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": { "type": "string" },
+                        "kind": { "type": "string", "enum": ["numeric", "alphanumeric", "link"] },
+                        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                        "method": { "type": "string", "enum": ["labelled", "subject", "isolated-line", "magic-link"] },
+                        "source": { "type": "string", "enum": ["subject", "text", "html"] },
+                        "context": { "type": "string" }
+                      }
+                    }
+                  },
+                  "best": { "type": ["object", "null"], "description": "Top-ranked non-link code" },
+                  "links": { "type": "array", "items": { "type": "object" }, "description": "Magic links, kept separate" },
+                  "messages": { "type": "array", "items": { "type": "object" } },
+                  "waitedMs": { "type": "number" },
+                  "polledAt": { "type": "string", "format": "date-time" }
+                }
+              },
+              "signature": { "type": "string" },
+              "algorithm": { "type": "string", "enum": ["HMAC-SHA256"] }
+            }
+          },
+          "paidWith": { "type": "object" }
+        }
+      }
+    }
+  ],
+  "free": [
+    { "resource": "GET /messages/:token", "description": "Message metadata — sender, subject, arrival time, code count — without the codes. Poll this for free to know when to pay." },
+    { "resource": "DELETE /mailbox/:token", "description": "Release a mailbox early. Do this when you're finished." },
+    { "resource": "POST /verify", "description": "Verify the HMAC signature on a mailbox or codes record" },
+    { "resource": "GET /health", "description": "Liveness, payment rails, SMTP status and live mailbox count" }
+  ],
+  "library": {
+    "npm": "x402-otp-relay",
+    "exports": ["MailboxStore", "SmtpRelay", "extractCodes", "bestCode", "paywall", "sign", "verify"]
+  }
+}

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>x402-otp-relay — disposable OTP mailboxes for agents</title>
+<meta name="description" content="Rent a disposable relay mailbox with x402, hand its address to whatever needs to email you a code, and poll for the extracted OTP. Real inbound SMTP, ranked extraction. USDC on Base or Solana.">
+<style>
+  :root {
+    --accent: #0052ff;
+    --solana: #14f195;
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
+    --fg: #1a1a1a;
+    --fg-soft: #57606a;
+    --border: #d8dee4;
+    --code-bg: #f6f8fa;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --bg-soft: #161b22;
+      --fg: #e6edf3;
+      --fg-soft: #9198a1;
+      --border: #30363d;
+      --code-bg: #161b22;
+      --accent: #4d8bff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header { padding: 72px 0 48px; border-bottom: 1px solid var(--border); }
+  .eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 14px;
+  }
+  h1 { font-size: clamp(32px, 6vw, 46px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -.02em; }
+  .tagline { font-size: clamp(17px, 2.6vw, 21px); color: var(--fg-soft); margin: 0 0 28px; max-width: 640px; }
+  .rails { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+  .pill {
+    font-size: 13px; padding: 4px 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-soft); color: var(--fg-soft);
+  }
+  .pill strong { color: var(--fg); font-weight: 600; }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn {
+    display: inline-block; padding: 9px 18px; border-radius: var(--radius); font-weight: 600; font-size: 15px;
+    background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  }
+  .btn:hover { text-decoration: none; filter: brightness(1.08); }
+  .btn.ghost { background: transparent; color: var(--fg); border-color: var(--border); }
+  h2 { font-size: 24px; margin: 52px 0 14px; letter-spacing: -.01em; }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  p { margin: 0 0 14px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.55;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: .92em; }
+  p code, li code, td code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14.5px; display: block; overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-soft); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: none; }
+  .price { font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .flow { margin: 20px 0 28px; }
+  .flow svg { width: 100%; height: auto; max-width: 720px; display: block; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 18px 0 8px; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; background: var(--bg-soft); }
+  .card h3 { margin: 0 0 5px; font-size: 15px; }
+  .card p { margin: 0; font-size: 14px; color: var(--fg-soft); }
+  .warn {
+    border: 1px solid #d1242f; border-left-width: 4px; border-radius: var(--radius);
+    background: rgba(209, 36, 47, .06); padding: 14px 18px; margin: 22px 0;
+  }
+  .warn strong { color: #d1242f; }
+  @media (prefers-color-scheme: dark) { .warn { background: rgba(248, 81, 73, .1); border-color: #f85149; } .warn strong { color: #ff7b72; } }
+  footer { margin: 64px 0 40px; padding-top: 22px; border-top: 1px solid var(--border); color: var(--fg-soft); font-size: 14px; }
+  footer a { color: var(--fg-soft); text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">x402 Suite · infrastructure</span>
+    <h1>x402-otp-relay</h1>
+    <p class="tagline">The "we've emailed you a code" step, solved for agents. Rent a disposable relay mailbox, hand its address to whatever needs to email you, poll for the extracted code.</p>
+    <div class="rails">
+      <span class="pill">Pay in <strong>USDC on Base</strong></span>
+      <span class="pill">or <strong>USDC on Solana</strong></span>
+      <span class="pill">Real inbound SMTP</span>
+    </div>
+    <pre><code>npm install x402-otp-relay</code></pre>
+    <div class="cta">
+      <a class="btn" href="https://github.com/nirholas/x402-otp-relay">GitHub</a>
+      <a class="btn ghost" href="./tutorial.md">Tutorial</a>
+      <a class="btn ghost" href="./api.md">API reference</a>
+      <a class="btn ghost" href="./agents.md">For agents</a>
+    </div>
+  </header>
+
+  <h2>The problem</h2>
+  <p>Half the internet's signup flows end the same way: <em>we've sent a code to your email</em>. An agent with a wallet and no inbox stops dead right there — not because the task is hard, but because there is nowhere for the email to go.</p>
+  <p>This service is the inbox. Rent a mailbox for a cent, paste its address into the form, poll for the code.</p>
+
+  <h2>Pricing</h2>
+  <table>
+    <thead><tr><th>Route</th><th>Price</th><th>What you get back</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /mailbox</code></td><td class="price">$0.01</td><td>Signed <code>{ relayAddress, mailboxToken, expiry }</code></td></tr>
+      <tr><td><code>GET /codes/:token</code></td><td class="price">$0.002</td><td>Codes from mail received so far, ranked with confidence and context</td></tr>
+      <tr><td><code>GET /messages/:token</code></td><td class="price">free</td><td>Message metadata, no codes — <strong>poll this while waiting</strong></td></tr>
+      <tr><td><code>DELETE /mailbox/:token</code></td><td class="price">free</td><td>Release a mailbox early</td></tr>
+      <tr><td><code>POST /verify</code></td><td class="price">free</td><td>Signature check on any record</td></tr>
+    </tbody>
+  </table>
+
+  <h2>The loop that costs $0.012</h2>
+  <div class="flow">
+    <svg viewBox="0 0 720 176" role="img" aria-label="Rent a mailbox for one cent, poll the free metadata endpoint until mail lands, then pay a fifth of a cent once for the code">
+      <defs>
+        <marker id="ar5" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.5" opacity=".85" marker-end="url(#ar5)">
+        <path d="M124 46 H196"/>
+        <path d="M320 46 H392"/>
+        <path d="M516 46 H588"/>
+        <path d="M452 74 V116"/>
+      </g>
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11.5" fill="currentColor">
+        <rect x="8" y="28" width="116" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="66" y="50" text-anchor="middle" font-size="11">POST /mailbox</text>
+        <text x="66" y="84" text-anchor="middle" font-size="10.5" opacity=".7">$0.01</text>
+
+        <rect x="200" y="28" width="120" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="260" y="50" text-anchor="middle" font-size="11">site emails you</text>
+        <text x="260" y="84" text-anchor="middle" font-size="10.5" opacity=".7">SMTP → extract</text>
+
+        <rect x="396" y="28" width="120" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="456" y="50" text-anchor="middle" font-size="11">/messages</text>
+        <text x="452" y="134" text-anchor="middle" font-size="10.5" opacity=".7">free, poll until</text>
+        <text x="452" y="150" text-anchor="middle" font-size="10.5" opacity=".7">messageCount &gt; 0</text>
+
+        <rect x="592" y="28" width="120" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="652" y="50" text-anchor="middle" font-size="11">/codes</text>
+        <text x="652" y="84" text-anchor="middle" font-size="10.5" opacity=".7">$0.002, once</text>
+      </g>
+    </svg>
+  </div>
+  <p>The naive version — polling <code>/codes</code> once a second for thirty seconds — costs $0.06 and mostly buys empty arrays. The free metadata poll exists precisely so you don't.</p>
+
+  <h2>Extraction is the hard part</h2>
+  <p>A verification email is a haystack full of numbers: order ids, years, prices, phone numbers, tracking codes, footer addresses. "First six digits wins" is wrong often enough to burn login attempts — and a wrong code sometimes locks the account.</p>
+  <pre><code>{
+  "code": "481920",
+  "kind": "numeric",
+  "confidence": 0.95,
+  "method": "labelled",
+  "source": "subject",
+  "context": "481920 is your verification code"
+}</code></pre>
+  <table>
+    <thead><tr><th>Tier</th><th>Confidence</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td>labelled</td><td class="price">0.9–0.95</td><td>Adjacent to "verification code", "one-time passcode", "your PIN" — the sender told us what it is</td></tr>
+      <tr><td>structural</td><td class="price">0.7–0.75</td><td>Standing alone on its own line, or code-shaped in the subject</td></tr>
+      <tr><td>magic link</td><td class="price">0.8</td><td>A URL whose path says verify/confirm/login — returned <strong>separately</strong>, since following one is a different action from typing a code</td></tr>
+    </tbody>
+  </table>
+  <p>Everything is then filtered against the things that merely look like codes: years, prices (<code>$1234.56</code>), phone numbers, dates, order references, copyright footers, unsubscribe links, and digits that are part of a longer number. HTML-only mail is converted first, because plenty of senders never include a text part.</p>
+
+  <h2>Real SMTP, not a webhook</h2>
+  <p>Mail arrives over actual SMTP, parsed with <code>mailparser</code> — MIME, quoted-printable, base64 and HTML-only all work. Point an MX record at it and real verification email lands here.</p>
+  <pre><code>relay.example.com.  IN  MX  10  smtp.example.com.</code></pre>
+  <p>The address is a <strong>hash of the token</strong>, not the token:</p>
+  <pre><code>POST /mailbox  →  relayAddress: otp-9dc876f944af47e6978c@relay.example.com   ← public
+                  mailboxToken: cSrQEfBpVBX1nH2k…                            ← secret</code></pre>
+  <p>That distinction matters. The address gets typed into someone else's form and ends up in their logs, their CRM, and probably a support ticket. It must not be the thing that can read the mailbox.</p>
+  <p>Unknown recipients get a <code>550</code>, message size is capped at 1 MB, and mailboxes expire — 15 minutes by default, longer than any OTP's own validity and short enough that this isn't a standing pile of other people's verification codes.</p>
+
+  <div class="warn">
+    <p><strong>What this is not for.</strong> The service exists so an agent can complete a verification step for an account it is legitimately setting up or operating. Using a disposable relay to evade a service's identity requirements, create bulk fake accounts, or receive codes for an account that isn't yours is abuse — and in the last case, likely a crime. If you run a deployment, you can see every code that passes through it. Treat that accordingly, and set a short TTL.</p>
+  </div>
+
+  <h2>Both rails, always</h2>
+  <table>
+    <thead><tr><th>Rail</th><th>Network</th><th>payTo</th><th>Facilitator</th></tr></thead>
+    <tbody>
+      <tr><td>EVM</td><td><code>base-sepolia</code> / <code>base</code></td><td><code>0x40252CFDF8B20Ed757D61ff157719F33Ec332402</code></td><td>x402.org</td></tr>
+      <tr><td>Solana</td><td><code>solana</code> / <code>solana-devnet</code></td><td><code>WwwuGbqHrwF5RG89KhUbmRWEvjnRH9k5kVM5p7T3WwW</code></td><td>PayAI</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Docs</h2>
+  <div class="cards">
+    <a class="card" href="./tutorial.md"><h3>Tutorial →</h3><p>Run it, rent a mailbox, deliver real mail over SMTP, read the code.</p></a>
+    <a class="card" href="./api.md"><h3>API reference →</h3><p>Every route and every library export, with schemas and error cases.</p></a>
+    <a class="card" href="./agents.md"><h3>For AI agents →</h3><p>The cheap loop, reading confidence scores, MCP integration.</p></a>
+    <a class="card" href="https://github.com/nirholas/x402-otp-relay/blob/main/skill.md"><h3>skill.md →</h3><p>The agent-facing contract in one file.</p></a>
+    <a class="card" href="https://github.com/nirholas/x402-otp-relay/blob/main/public/.well-known/x402"><h3>.well-known/x402 →</h3><p>Machine-readable manifest for x402 indexes.</p></a>
+    <a class="card" href="https://github.com/nirholas/x402-otp-relay/blob/main/openapi.json"><h3>OpenAPI 3.1 →</h3><p>Including the 402 response and PaymentRequirements schema.</p></a>
+  </div>
+
+  <footer>
+    <p>Part of the <a href="https://github.com/nirholas/x402-suite">x402 Suite</a> · Apache-2.0 · <a href="mailto:nichxbt@gmail.com">nichxbt@gmail.com</a></p>
+  </footer>
+
+</div>
+</body>
+</html>
