@@ -1,0 +1,28 @@
+# x402-otp-relay
+
+> The 'code sent to your email' step, solved for agents: paid relay mailboxes, retrieved OTP codes returned in-response
+
+x402-otp-relay is an open-source repository by nirholas, part of the three.ws ecosystem.
+
+## Docs
+
+- [README](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md): install, usage and reference
+- [The problem](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#the-problem)
+- [Why x402 for this](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#why-x402-for-this)
+- [Quickstart](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#quickstart)
+- [API](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#api)
+- [Extraction is the hard part](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#extraction-is-the-hard-part)
+- [Real SMTP, not a webhook](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#real-smtp-not-a-webhook)
+- [Both rails, always](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#both-rails-always)
+- [Use it as a library](https://github.com/nirholas/x402-otp-relay/blob/HEAD/README.md#use-it-as-a-library)
+- [AGENTS.md](https://github.com/nirholas/x402-otp-relay/blob/HEAD/AGENTS.md): guidance for coding agents
+- [Full text for LLMs](https://github.com/nirholas/x402-otp-relay/blob/HEAD/llms-full.txt): the README inlined
+
+## Project
+
+- [Source](https://github.com/nirholas/x402-otp-relay)
+- [Issues](https://github.com/nirholas/x402-otp-relay/issues)
+- [Discussions](https://github.com/nirholas/x402-otp-relay/discussions)
+- [Homepage](https://nirholas.github.io/x402-otp-relay/)
+- [three.ws](https://three.ws): the platform this is part of
+- [All repositories by nirholas](https://github.com/nirholas/nirholas#readme)

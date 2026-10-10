@@ -192,3 +192,26 @@ Apache-2.0 — see [LICENSE](./LICENSE).
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=nirholas/x402-otp-relay&type=Date)](https://www.star-history.com/#nirholas/x402-otp-relay&Date)
+
+<!-- three.ws:growth -->
+## Support the project
+
+If x402-otp-relay saves you time, **[star it on GitHub](https://github.com/nirholas/x402-otp-relay)**. Stars are how other developers and AI agents find the repositories worth trusting, and they cost you one click.
+
+Know someone who would use it? [Post on X](https://twitter.com/intent/tweet?text=x402-otp-relay%3A%20The%20'code%20sent%20to%20your%20email'%20step%2C%20solved%20for%20agents%3A%20paid%20relay%20mailboxes%2C%20retrieved%20OTP%20codes&url=https%3A%2F%2Fgithub.com%2Fnirholas%2Fx402-otp-relay) · [Share on Bluesky](https://bsky.app/intent/compose?text=x402-otp-relay%3A%20The%20'code%20sent%20to%20your%20email'%20step%2C%20solved%20for%20agents%3A%20paid%20relay%20mailboxes%2C%20retrieved%20OTP%20codes%20https%3A%2F%2Fgithub.com%2Fnirholas%2Fx402-otp-relay) · [Share on LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fgithub.com%2Fnirholas%2Fx402-otp-relay) · [Submit to Hacker News](https://news.ycombinator.com/submitlink?u=https%3A%2F%2Fgithub.com%2Fnirholas%2Fx402-otp-relay&t=x402-otp-relay%3A%20The%20'code%20sent%20to%20your%20email'%20step%2C%20solved%20for%20agents%3A%20paid%20relay%20mailboxes%2C%20retrieved%20OTP%20codes) · [Share on Reddit](https://www.reddit.com/submit?url=https%3A%2F%2Fgithub.com%2Fnirholas%2Fx402-otp-relay&title=x402-otp-relay%3A%20The%20'code%20sent%20to%20your%20email'%20step%2C%20solved%20for%20agents%3A%20paid%20relay%20mailboxes%2C%20retrieved%20OTP%20codes)
+
+## Built for AI agents too
+
+Coding agents and LLM tooling can read this repo directly: [AGENTS.md](./AGENTS.md), [llms.txt](./llms.txt), [llms-full.txt](./llms-full.txt). Point an agent at `https://github.com/nirholas/x402-otp-relay` and it has the context it needs.
+
+## More from the same author
+
+- [All repositories by nirholas](https://github.com/nirholas/nirholas#readme): the full catalog, grouped by topic
+- [three.ws](https://three.ws): the platform for 3D AI agents with Solana wallets, a skill marketplace and x402 payments
+- Questions or ideas: [open an issue](https://github.com/nirholas/x402-otp-relay/issues) or [start a discussion](https://github.com/nirholas/x402-otp-relay/discussions)
+
+## Contributors
+
+[![Contributors](https://contrib.rocks/image?repo=nirholas/x402-otp-relay)](https://github.com/nirholas/x402-otp-relay/graphs/contributors)
+
+<!-- /three.ws:growth -->
