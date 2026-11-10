@@ -1,0 +1,22 @@
+{
+  "name": "x402-otp-relay",
+  "owner": {
+    "name": "nirholas"
+  },
+  "description": "Run the x402-otp-relay service to rent disposable mailboxes and read ranked, confidence-scored verification codes from incoming email via x402.",
+  "plugins": [
+    {
+      "name": "x402-otp-relay",
+      "source": "./plugins/x402-otp-relay",
+      "description": "Run the x402-otp-relay service to rent disposable mailboxes and read ranked, confidence-scored verification codes from incoming email via x402.",
+      "category": "automation",
+      "tags": [
+        "x402",
+        "otp",
+        "email",
+        "smtp",
+        "verification"
+      ]
+    }
+  ]
+}
